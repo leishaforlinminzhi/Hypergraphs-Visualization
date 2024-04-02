@@ -6,9 +6,10 @@ class Hypergraph:
             self.num_v = max(v_list) + 1
         else:
             self.num_v = 0
-        self.vertices = v_list # 真正被使用的点
-        self.edges = e_list
+        self.edges = e_list # 保存边的列表 其中元素为所有边[]
         self.points = {} # 保存顶点的坐标
+        self.R = {} # 保存关系 R[i]={[..],[..],..} 其中每个元素为关联i个点的边 为e_list的一个划分
+        self.d = {} # 顶点的度
 
     def dataloader(self, filename: str):
         self.edges = []
@@ -19,6 +20,18 @@ class Hypergraph:
                 edge = list(map(int, line.strip().split()))
                 self.edges.append(edge)
                 self.vertices.update(edge)
+                
+                if(len(edge) not in self.R):
+                    self.R[len(edge)] = []
+                self.R[len(edge)].append(edge)
+
+                for v in edge:
+                    if v not in self.d:
+                        self.d[v] = 0
+                    else:
+                        self.d[v] += 1
 
         self.vertices = list(self.vertices)
-        self.num_v = max(self.vertices) + 1
+        self.R = dict(sorted(self.R.items()))
+        self.d = dict(sorted(self.d.items()))
+

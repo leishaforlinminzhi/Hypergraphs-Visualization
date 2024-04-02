@@ -11,18 +11,11 @@ def draw(graph: Hypergraph):
     points = graph.points
     plt.figure(figsize=(8, 8))
 
-    for edge in edges:
-        for v in edge:
-            if v not in points:
-                # 为每个顶点生成随机的坐标
-                points[v] = np.random.rand(2)
-
-
     # 设置不同边的颜色
     colors = plt.cm.viridis(np.linspace(0, 1, len(edges)))
 
     for i, edge in enumerate(edges):
-
+        # 每条边的顶点集合
         edge_vertices = [points[v] for v in edge]
 
         # 计算多边形的中心点
@@ -36,15 +29,15 @@ def draw(graph: Hypergraph):
         polygon = plt.Polygon(edge_vertices, closed=True, edgecolor=colors[i], facecolor=colors[i], alpha=0.5, linewidth=2)
         plt.gca().add_patch(polygon)
 
-        # 绘制多边形内的顶点
-        for v in edge_vertices:
-            plt.plot(v[0], v[1], 'ro', markersize=5)
-
+        # 绘制多边形内的顶点并标注序号
+        for v in edge:
+            index = vertices.index(v)  # 获取顶点在vertices中的索引
+            point = points[v]
+            plt.plot(point[0], point[1], 'ro', markersize=5)
+            plt.text(point[0], point[1], str(index), color='black', ha='center', va='center')
 
     plt.gca().set_aspect('equal', adjustable='box')
     plt.title('Hypergraph Visualization')
-    plt.xlabel('X')
-    plt.ylabel('Y')
     plt.grid(True)
     plt.show()
 
@@ -52,6 +45,15 @@ def draw(graph: Hypergraph):
 def main(args):
     graph = Hypergraph([],[])
     graph.dataloader(args.filename)
+
+    print("R:",graph.R)
+    print("d:",graph.d)
+
+    # 为每个顶点生成随机的坐标
+    for edge in graph.edges:
+        for v in edge:
+            if v not in graph.points:
+                graph.points[v] = np.random.rand(2)
 
     draw(graph)
 
