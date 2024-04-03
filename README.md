@@ -5,6 +5,8 @@
 #### 参数：
 
 `--filename {数据文件路径}` default:'./data.txt'
+
+
 `--output {输出图像保存文件路径}` default:'./ouput.png'
 
 #### 输入数据格式举例:
