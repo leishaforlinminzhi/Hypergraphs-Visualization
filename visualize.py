@@ -21,10 +21,13 @@ def main(args):
         if point not in graph.points:
             graph.points[point] = np.random.rand(2)
 
+    draw = Drawer(graph, "pre_"+args.output, 'Random Guess:Hypergraph Visualization')
+
     opt = Optimizer(graph)
     graph.points = opt.res
+    print(opt.res)
 
-    draw = Drawer(graph, args.output)
+    draw = Drawer(graph, args.output,'Hypergraph Visualization')
 
 
 if __name__ == "__main__":

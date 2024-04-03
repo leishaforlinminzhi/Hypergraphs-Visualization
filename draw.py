@@ -5,7 +5,7 @@ import numpy as np
 from hypergraph import Hypergraph
 
 class Drawer:
-    def __init__(self, graph: Hypergraph, dst: str):
+    def __init__(self, graph: Hypergraph, dst: str, name:str):
         
         self.dir = dst
 
@@ -40,7 +40,7 @@ class Drawer:
                 plt.text(point[0], point[1], str(index), color='black', ha='center', va='center')
 
         plt.gca().set_aspect('equal', adjustable='box')
-        plt.title('Hypergraph Visualization')
+        plt.title(name)
         plt.grid(True)
 
         # 在这之前添加保存图形的代码
