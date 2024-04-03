@@ -15,7 +15,8 @@ class Drawer:
         plt.figure(figsize=(8, 8))
 
         # 设置不同边的颜色
-        colors = plt.cm.viridis(np.linspace(0, 1, len(edges)))
+        colors = plt.cm.viridis(np.linspace(0, 1, len(graph.R)))
+        keys_list = list(graph.R.keys())
 
         for i, edge in enumerate(edges):
             # 每条边的顶点集合
@@ -29,7 +30,8 @@ class Drawer:
             angles = np.arctan2([v[1] - center_y for v in edge_vertices], [v[0] - center_x for v in edge_vertices])
 
             # 绘制正多边形
-            polygon = plt.Polygon(edge_vertices, closed=True, edgecolor=colors[i], facecolor=colors[i], alpha=0.5, linewidth=2)
+            color_index = keys_list.index(len(edge))
+            polygon = plt.Polygon(edge_vertices, closed=True, edgecolor=colors[color_index], facecolor=colors[color_index], alpha=0.5, linewidth=2)
             plt.gca().add_patch(polygon)
 
             # 绘制多边形内的顶点并标注序号

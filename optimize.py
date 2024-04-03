@@ -59,6 +59,14 @@ def area(edge, points):
         total_area += (points[edge[i]][0] * points[edge[j]][1] - points[edge[j]][0] * points[edge[i]][1])
     return abs(total_area) / 2
 
+def get_PA(edge, points):
+    """计算单个多边形的PA"""
+    single_PA = 0
+    n = len(points)
+    for i in range(n):
+        single_PA += (1 - distance(points[edge[i]], points[edge[(i + 1)% n]])) ** 2
+    return single_PA
+
 def objective_function(x):
     # 将x中保存的一维坐标赋值回坐标向量
     points = {}
@@ -75,16 +83,32 @@ def objective_function(x):
         edge = list(edges_points[i].keys())
         # print("after:",edges_points[i])
     
-    # Polygon Regularity (PR) Energy:
+    k_PR = 0.30
+    k_PA = 0.16
+    k_PS = 0.36
+    k_PI = 0.18
+
     E_PR = 0 
+    E_PA = 0
+    E_PS = 0
+    E_PI = 0
+
     for i in range(len(Graph.edges)):
         edge = Graph.edges[i]
         edge_points = edges_points[i]
+
+        # Polygon Regularity (PR) Energy
         P = perimeter(edge, edge_points)
         A = area(edge, edge_points)
         C = 4*len(edge)*(math.tan(math.pi/len(edge)))
-        E_PR += P * P - C * A
-    return E_PR
+        E_PR += P ** 2 - C * A
+
+        # Polygon Area (PA) Energy
+        E_PA += get_PA(edge, edge_points)
+
+    
+
+    return k_PR * E_PR + k_PA * E_PA + k_PS * E_PS +k_PI * E_PI
 
 gradient_function = grad(objective_function)
 
