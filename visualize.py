@@ -3,64 +3,34 @@
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+import math
+from scipy.optimize import minimize
+
+
 from hypergraph import Hypergraph
-
-def draw(graph: Hypergraph):
-    edges = graph.edges
-    vertices = graph.vertices
-    points = graph.points
-    plt.figure(figsize=(8, 8))
-
-    # 设置不同边的颜色
-    colors = plt.cm.viridis(np.linspace(0, 1, len(edges)))
-
-    for i, edge in enumerate(edges):
-        # 每条边的顶点集合
-        edge_vertices = [points[v] for v in edge]
-
-        # 计算多边形的中心点
-        center_x = np.mean([v[0] for v in edge_vertices])
-        center_y = np.mean([v[1] for v in edge_vertices])
-
-        # 计算每个顶点到中心点的极坐标角度
-        angles = np.arctan2([v[1] - center_y for v in edge_vertices], [v[0] - center_x for v in edge_vertices])
-
-        # 绘制正多边形
-        polygon = plt.Polygon(edge_vertices, closed=True, edgecolor=colors[i], facecolor=colors[i], alpha=0.5, linewidth=2)
-        plt.gca().add_patch(polygon)
-
-        # 绘制多边形内的顶点并标注序号
-        for v in edge:
-            index = vertices.index(v)  # 获取顶点在vertices中的索引
-            point = points[v]
-            plt.plot(point[0], point[1], 'ro', markersize=5)
-            plt.text(point[0], point[1], str(index), color='black', ha='center', va='center')
-
-    plt.gca().set_aspect('equal', adjustable='box')
-    plt.title('Hypergraph Visualization')
-    plt.grid(True)
-    plt.show()
+from draw import Drawer
+from optimize import Optimizer
 
 
 def main(args):
     graph = Hypergraph([],[])
     graph.dataloader(args.filename)
 
-    print("R:",graph.R)
-    print("d:",graph.d)
-
     # 为每个顶点生成随机的坐标
-    for edge in graph.edges:
-        for v in edge:
-            if v not in graph.points:
-                graph.points[v] = np.random.rand(2)
+    for point in graph.d:
+        if point not in graph.points:
+            graph.points[point] = np.random.rand(2)
 
-    draw(graph)
+    opt = Optimizer(graph)
+    graph.points = opt.res
+
+    draw = Drawer(graph, args.output)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--filename", type=str, default="data.txt", help="name of the data file")
+    parser.add_argument("--output", type=str, default="output.png", help="dst dir of output")
     args = parser.parse_args()
 
     main(args)
