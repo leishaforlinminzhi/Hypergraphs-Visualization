@@ -36,10 +36,9 @@ class Drawer:
 
             # 绘制多边形内的顶点并标注序号
             for v in edge:
-                index = vertices.index(v)  # 获取顶点在vertices中的索引
                 point = points[v]
                 plt.plot(point[0], point[1], 'ro', markersize=5)
-                plt.text(point[0], point[1], str(index), color='black', ha='center', va='center')
+                plt.text(point[0], point[1], str(v), color='black', ha='center', va='center')
 
         plt.gca().set_aspect('equal', adjustable='box')
         plt.title(name)

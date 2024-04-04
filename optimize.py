@@ -76,13 +76,11 @@ def get_PA(edge, points):
 
 def get_PS(e1, e2, c1, c2):
     """计算两个给定多边形的PS"""
-    db = 0.05 # buffer distance
-    ab = math.pi/12 # buffer angle
+    db = 0.1 # buffer distance
+    ab = math.pi/18 # buffer angle
     e = 0
 
-    set1 = set(e1)
-    set2 = set(e2)
-    intersec = list(set1.intersection(set2))
+    intersec = list([x for x in e1 if x in e2])
     if(len(intersec) == 1):
         p = e1[intersec[0]]
     n1 = len(e1)
@@ -109,7 +107,41 @@ def get_PS(e1, e2, c1, c2):
         return 0
 
 def get_PI(e1, e2, p1, p2):
-    e = 0
+    """计算两个给定多边形的PI"""
+
+    intersec = [x for x in e1 if x in e2]
+    intersec_points = {key: value for key, value in p1.items() if key in intersec}
+    if(len(intersec) < 3):
+        return 0
+    
+    n0 = len(intersec)
+    n1 = len(e1)
+    n2 = len(e2)
+
+    s1 = {}
+    s2 = {}
+    for i in range(len(intersec)):
+        s1[i] = 0
+        s2[i] = 0
+    
+    index = 0
+    for i in range(len(e1)):
+        if e1[i] == intersec[index]:
+            index = (index + 1) % len(intersec) 
+            s1[index] += distance(p1[e1[i]], p1[e1[(i + 1) % len(e1)]])
+        else:
+            s1[index] += distance(p1[e1[i]], p1[e1[(i + 1) % len(e1)]])
+    
+    index = 0
+    for i in range(len(e2)):
+        if e2[i] == intersec[index]:
+            index = (index + 1) % len(intersec) 
+            s2[index] += distance(p2[e2[i]], p2[e2[(i + 1) % len(e2)]])
+        else:
+            s2[index] += distance(p2[e2[i]], p2[e2[(i + 1) % len(e2)]])
+
+    e = sum([(x - n1/n0)**2 for x in s1]) + sum([(x - n2/n0)**2 for x in s2]) + get_PR(intersec,intersec_points)
+
     return e
 
 def objective_function(x):
@@ -136,7 +168,7 @@ def objective_function(x):
         edge = Graph.edges[i]
         edges_points[i] = {key: value for key, value in points.items() if key in edge}
         edges_points[i],centroid_point[i] = centroid(edges_points[i])
-        edge = list(edges_points[i].keys())
+        Graph.edges[i] = list(edges_points[i].keys())
 
     for i in range(len(Graph.edges)):
         edge = Graph.edges[i]
@@ -152,19 +184,15 @@ def objective_function(x):
         for j in range(i+1,len(Graph.edges)):
             if(len(Graph.edges[i]) != 1 and len(Graph.edges[j]) != 1):
                 # Polygon Separation (PS) Energy
-                E_PS += get_PS(edges_points[i],edges_points[j],
-                               centroid_point[i],centroid_point[j])
+                E_PS += get_PS(edges_points[i],edges_points[j],centroid_point[i],centroid_point[j])
                 # Polygon Intersection (PI) Energy
-                E_PI += get_PI(Graph.edges[i],Graph.edges[j],
-                               edges_points[i],edges_points[j])
+                E_PI += get_PI(Graph.edges[i],Graph.edges[j],edges_points[i],edges_points[j])
             else:
                 # Polygon Separation (PS) Energy
                 # TODO：case for monogon
                 pass
 
-
-
-    return k_PR * E_PR + k_PA * E_PA + k_PS * E_PS +k_PI * E_PI
+    return k_PR * E_PR + k_PA * E_PA + k_PS * E_PS + k_PI * E_PI
 
 gradient_function = grad(objective_function)
 
