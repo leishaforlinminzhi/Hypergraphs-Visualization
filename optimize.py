@@ -7,6 +7,20 @@ from scipy.optimize import minimize
 from collections import OrderedDict
 
 from hypergraph import Hypergraph
+from draw import Drawer
+
+k_PR = 0.30
+k_PA = 0.16
+k_PS = 0.36
+k_PI = 0.18
+
+def set_k(pr, pa, ps, pi):
+    global k_PR, k_PA, k_PS, k_PI
+    k_PR = pr
+    k_PA = pa
+    k_PS = ps
+    k_PI = pi
+
 
 Graph = Hypergraph([],[])
 
@@ -146,10 +160,6 @@ def get_PI(e1, e2, p1, p2):
 
 def objective_function(x):
     """目标函数"""
-    k_PR = 0.30
-    k_PA = 0.16
-    k_PS = 0.36
-    k_PI = 0.18
 
     E_PR = 0 
     E_PA = 0
@@ -191,8 +201,27 @@ def objective_function(x):
                 # Polygon Separation (PS) Energy
                 # TODO：case for monogon
                 pass
-
+    Graph.points = points
     return k_PR * E_PR + k_PA * E_PA + k_PS * E_PS + k_PI * E_PI
+
+def swap_minimize(points):
+    x_buffer = get_x(points)
+    note = 0
+    for e in Graph.edges:
+        for i in range(len(e)):
+            for j in range(i+1,len(e)):
+                points_buffer = points.copy()
+                buffer = points_buffer[e[i]]
+                points_buffer[e[i]] = points_buffer[e[j]]
+                points_buffer[e[j]] = buffer
+                x = get_x(points_buffer)
+                if objective_function(x) < objective_function(x_buffer):
+                    print(e[i],e[j],objective_function(x),objective_function(x_buffer))
+                    note = 1
+                    points = points_buffer.copy()
+                    x_buffer = x
+
+    return points,note
 
 # gradient_function = grad(objective_function)
 
@@ -223,8 +252,28 @@ def getres(graph:Hypergraph):
 
     x = get_x(Graph.points)
 
+    set_k(0.10, 0.08, 0.36, 0.18)
     res = minimize(objective_function, x, method='L-BFGS-B')
-    print(res.x)
     points = get_points(res.x)
+    graph.points = points
+    
+    for i in range(30):
+        improve_note = 0
+
+        draw = Drawer(graph, f"records/v-2-0/{i}.png",'Hypergraph Visualization', False)
+        print("----------------------",i)
+        
+        set_k(0, 0, 0.36, 0.18)
+        points, improve_note = swap_minimize(points)
+        graph.points = points
+
+        x = get_x(points)
+        set_k(0.30, 0.16, 0.36, 0.18)
+        res = minimize(objective_function, x, method='L-BFGS-B')
+        points = get_points(res.x)
+
+        if improve_note == 0:
+            break
+
 
     return points

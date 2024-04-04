@@ -36,7 +36,3 @@ class Hypergraph:
         self.R = dict(sorted(self.R.items()))
         self.d = dict(sorted(self.d.items()))
         self.v = list(self.d.keys())
-
-        print("R:",self.R)
-        print("d:",self.d)
-        print("v:",self.v)
