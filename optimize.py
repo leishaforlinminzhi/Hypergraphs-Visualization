@@ -59,6 +59,13 @@ def area(edge, points):
         total_area += (points[edge[i]][0] * points[edge[j]][1] - points[edge[j]][0] * points[edge[i]][1])
     return abs(total_area) / 2
 
+def get_PR(edge, edge_points):
+    """计算单个多边形的PR"""
+    P = perimeter(edge, edge_points)
+    A = area(edge, edge_points)
+    C = 4*len(edge)*(math.tan(math.pi/len(edge)))
+    return P ** 2 - C * A
+
 def get_PA(edge, points):
     """计算单个多边形的PA"""
     single_PA = 0
@@ -67,10 +74,19 @@ def get_PA(edge, points):
         single_PA += (1 - distance(points[edge[i]], points[edge[(i + 1)% n]])) ** 2
     return single_PA
 
-def get_PS(intersec, p, n1, n2, c1, c2):
+def get_PS(e1, e2, c1, c2):
+    """计算两个给定多边形的PS"""
     db = 0.05 # buffer distance
     ab = math.pi/12 # buffer angle
     e = 0
+
+    set1 = set(e1)
+    set2 = set(e2)
+    intersec = list(set1.intersection(set2))
+    if(len(intersec) == 1):
+        p = e1[intersec[0]]
+    n1 = len(e1)
+    n2 = len(e2)
     if len(intersec) == 0:
         e = distance(c1, c2) - (1/(math.sin(math.pi/n1)*2) + 
                                 1/(math.sin(math.pi/n2)*2) + db)
@@ -91,9 +107,24 @@ def get_PS(intersec, p, n1, n2, c1, c2):
         return e ** 2
     else:
         return 0
-        
+
+def get_PI(e1, e2, p1, p2):
+    e = 0
+    return e
+
 def objective_function(x):
-    # 将x中保存的一维坐标赋值回坐标向量
+    """目标函数"""
+    k_PR = 0.30
+    k_PA = 0.16
+    k_PS = 0.36
+    k_PI = 0.18
+
+    E_PR = 0 
+    E_PA = 0
+    E_PS = 0
+    E_PI = 0
+
+    # x中保存的一维坐标赋值回坐标向量
     points = {}
     for i in range(len(x)//2):
         points[Graph.v[i]] = [x[i*2], x[i*2+1]]
@@ -106,41 +137,31 @@ def objective_function(x):
         edges_points[i] = {key: value for key, value in points.items() if key in edge}
         edges_points[i],centroid_point[i] = centroid(edges_points[i])
         edge = list(edges_points[i].keys())
-    
-    k_PR = 0.30
-    k_PA = 0.16
-    k_PS = 0.36
-    k_PI = 0.18
-
-    E_PR = 0 
-    E_PA = 0
-    E_PS = 0
-    E_PI = 0
 
     for i in range(len(Graph.edges)):
         edge = Graph.edges[i]
         edge_points = edges_points[i]
 
         # Polygon Regularity (PR) Energy
-        P = perimeter(edge, edge_points)
-        A = area(edge, edge_points)
-        C = 4*len(edge)*(math.tan(math.pi/len(edge)))
-        E_PR += P ** 2 - C * A
+        E_PR += get_PR(edge, edge_points)
 
         # Polygon Area (PA) Energy
         E_PA += get_PA(edge, edge_points)
 
-    # Polygon Separation (PS) Energy
-    # TODO：case for monogon
-    intersec_point = None
     for i in range(len(Graph.edges)):
         for j in range(i+1,len(Graph.edges)):
-            seti = set(Graph.edges[i])
-            setj = set(Graph.edges[j])
-            intersec = list(seti.intersection(setj))
-            if(len(intersec) == 1):
-                intersec_point = points[intersec[0]]
-            E_PS += get_PS(intersec,intersec_point,len(Graph.edges[i]),len(Graph.edges[j]),centroid_point[i],centroid_point[j])
+            if(len(Graph.edges[i]) != 1 and len(Graph.edges[j]) != 1):
+                # Polygon Separation (PS) Energy
+                E_PS += get_PS(edges_points[i],edges_points[j],
+                               centroid_point[i],centroid_point[j])
+                # Polygon Intersection (PI) Energy
+                E_PI += get_PI(Graph.edges[i],Graph.edges[j],
+                               edges_points[i],edges_points[j])
+            else:
+                # Polygon Separation (PS) Energy
+                # TODO：case for monogon
+                pass
+
 
 
     return k_PR * E_PR + k_PA * E_PA + k_PS * E_PS +k_PI * E_PI
@@ -152,6 +173,7 @@ def callback_function(x):
     evaluations.append(objective_function(x))
 
 def getres(graph:Hypergraph):
+    """获得优化结果:顶点坐标集合"""
     global Graph 
     Graph = graph
     x = []
