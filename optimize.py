@@ -36,7 +36,7 @@ def centroid(points):
 
     sorted_points = {key: value for key, value in sorted_points}
 
-    return sorted_points
+    return sorted_points, [centroid_x,centroid_y]
 
 def distance(point1, point2):
     """计算两点之间的距离"""
@@ -67,6 +67,31 @@ def get_PA(edge, points):
         single_PA += (1 - distance(points[edge[i]], points[edge[(i + 1)% n]])) ** 2
     return single_PA
 
+def get_PS(intersec, p, n1, n2, c1, c2):
+    db = 0.05 # buffer distance
+    ab = math.pi/12 # buffer angle
+    e = 0
+    if len(intersec) == 0:
+        e = distance(c1, c2) - (1/(math.sin(math.pi/n1)*2) + 
+                                1/(math.sin(math.pi/n2)*2) + db)
+    elif len(intersec) == 1:
+        a0 = math.pi * ((n1 - 2) / (2 * n1) + (n2 - 2) / (2 * n2)) + ab
+
+        AB = (p[0] - c1[0], p[1] - c1[1])
+        BC = (p[0] - c2[0], p[1] - c2[1])
+        dot_product = AB[0] * BC[0] + AB[1] * BC[1]
+        cosine_theta = dot_product / (distance(p,c1) * distance(p,c2))
+        a = math.acos(cosine_theta)
+
+        e = a - a0
+    elif len(intersec) == 2:
+        e = distance(c1, c2) - (1/(math.tan(math.pi/n1)) + 
+                                1/(math.tan(math.pi/n2)))/2
+    if e <= 0:
+        return e ** 2
+    else:
+        return 0
+        
 def objective_function(x):
     # 将x中保存的一维坐标赋值回坐标向量
     points = {}
@@ -74,14 +99,13 @@ def objective_function(x):
         points[Graph.v[i]] = [x[i*2], x[i*2+1]]
     
     edges_points = {}
+    centroid_point = {}
     # 将每条边对应的点通过质心极坐标排序
     for i in range(len(Graph.edges)):
         edge = Graph.edges[i]
         edges_points[i] = {key: value for key, value in points.items() if key in edge}
-        # print("before:",edges_points[i])
-        edges_points[i] = centroid(edges_points[i])
+        edges_points[i],centroid_point[i] = centroid(edges_points[i])
         edge = list(edges_points[i].keys())
-        # print("after:",edges_points[i])
     
     k_PR = 0.30
     k_PA = 0.16
@@ -106,7 +130,18 @@ def objective_function(x):
         # Polygon Area (PA) Energy
         E_PA += get_PA(edge, edge_points)
 
-    
+    # Polygon Separation (PS) Energy
+    # TODO：case for monogon
+    intersec_point = None
+    for i in range(len(Graph.edges)):
+        for j in range(i+1,len(Graph.edges)):
+            seti = set(Graph.edges[i])
+            setj = set(Graph.edges[j])
+            intersec = list(seti.intersection(setj))
+            if(len(intersec) == 1):
+                intersec_point = points[intersec[0]]
+            E_PS += get_PS(intersec,intersec_point,len(Graph.edges[i]),len(Graph.edges[j]),centroid_point[i],centroid_point[j])
+
 
     return k_PR * E_PR + k_PA * E_PA + k_PS * E_PS +k_PI * E_PI
 
