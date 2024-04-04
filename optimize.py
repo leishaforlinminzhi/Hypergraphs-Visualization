@@ -194,27 +194,37 @@ def objective_function(x):
 
     return k_PR * E_PR + k_PA * E_PA + k_PS * E_PS + k_PI * E_PI
 
-gradient_function = grad(objective_function)
+# gradient_function = grad(objective_function)
 
-evaluations = []
-def callback_function(x):
-    evaluations.append(objective_function(x))
+# evaluations = []
+# def callback_function(x):
+#     evaluations.append(objective_function(x))
+
+# res = minimize(objective_function, x, jac=gradient_function, method='L-BFGS-B', callback=callback_function)
+
+def get_x(points):
+    x = []
+    for point in points:
+        x.append(points[point][0])
+        x.append(points[point][1])
+    x = np.array(x)
+    return x
+
+def get_points(x):
+    points = {}
+    for i in range(len(x)//2):
+        points[Graph.v[i]] = [x[i*2], x[i*2+1]]
+    return points
 
 def getres(graph:Hypergraph):
     """获得优化结果:顶点坐标集合"""
     global Graph 
     Graph = graph
-    x = []
-    for point in Graph.points:
-        x.append(Graph.points[point][0])
-        x.append(Graph.points[point][1])
-    
-    x = np.array(x)
-    # res = minimize(objective_function, x, jac=gradient_function, method='L-BFGS-B', callback=callback_function)
+
+    x = get_x(Graph.points)
+
     res = minimize(objective_function, x, method='L-BFGS-B')
     print(res.x)
-    points = {}
-    for i in range(len(x)//2):
-        points[Graph.v[i]] = [res.x[i*2], res.x[i*2+1]]
+    points = get_points(res.x)
 
     return points
