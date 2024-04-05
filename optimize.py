@@ -6,6 +6,7 @@ import random
 from autograd import grad
 from scipy.optimize import minimize
 from collections import OrderedDict
+from datetime import datetime
 
 from hypergraph import Hypergraph
 from draw import Drawer
@@ -220,14 +221,10 @@ def swap_minimize(points):
                 y = objective_function(x)
                 if y < (y_buffer - 0.00001):
                     print(e[i], e[j], y, y_buffer)
-                    k = random.random() * y_buffer / 100
-                    if (y_buffer - y) > k:
-                        # 根据改善的程度决定接受的概率
-                        print("accept")
-                        note = 1
-                        points = points_buffer.copy()
-                        x_buffer = x
-                        y_buffer = y
+                    note = 1
+                    points = points_buffer.copy()
+                    x_buffer = x
+                    y_buffer = y
 
     return points,note
 
@@ -260,14 +257,23 @@ def getres(graph:Hypergraph):
 
     x = get_x(Graph.points)
 
+    record = {}
+    time = {}
+    set_k(0.10, 0.08, 0.36, 0.18)
+    record[0] = objective_function(x)
+    time[0] = datetime.now().strftime("%H:%M:%S")
+
+
     set_k(0.10, 0.08, 0.36, 0.18)
     res = minimize(objective_function, x, method='L-BFGS-B')
     points = get_points(res.x)
 
-    # min = 99999
-    # x_buffer = res.x
     
     for i in range(30):
+        
+        record[i+1] = objective_function(res.x)
+        time[i+1] = datetime.now().strftime("%H:%M:%S")
+
         improve_note = 0
 
         draw = Drawer(graph, f"records/v-2-1/{i}.png",'Hypergraph Visualization', False)
@@ -291,5 +297,10 @@ def getres(graph:Hypergraph):
 
     # graph.points = get_points(x_buffer).copy()
     # draw = Drawer(graph, f"records/v-2-1/opt.png",'Hypergraph Visualization', False)
+    
+    print()
+    print(record)
+    print(time)
+    print()
 
     return points
