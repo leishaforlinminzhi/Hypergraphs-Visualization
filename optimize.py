@@ -2,6 +2,7 @@
 
 import numpy as np
 import math
+import random
 from autograd import grad
 from scipy.optimize import minimize
 from collections import OrderedDict
@@ -206,6 +207,7 @@ def objective_function(x):
 
 def swap_minimize(points):
     x_buffer = get_x(points)
+    y_buffer = objective_function(x_buffer)
     note = 0
     for e in Graph.edges:
         for i in range(len(e)):
@@ -215,11 +217,17 @@ def swap_minimize(points):
                 points_buffer[e[i]] = points_buffer[e[j]]
                 points_buffer[e[j]] = buffer
                 x = get_x(points_buffer)
-                if objective_function(x) < objective_function(x_buffer):
-                    print(e[i],e[j],objective_function(x),objective_function(x_buffer))
-                    note = 1
-                    points = points_buffer.copy()
-                    x_buffer = x
+                y = objective_function(x)
+                if y < (y_buffer - 0.00001):
+                    print(e[i], e[j], y, y_buffer)
+                    k = random.random() * y_buffer / 100
+                    if (y_buffer - y) > k:
+                        # 根据改善的程度决定接受的概率
+                        print("accept")
+                        note = 1
+                        points = points_buffer.copy()
+                        x_buffer = x
+                        y_buffer = y
 
     return points,note
 
@@ -255,25 +263,33 @@ def getres(graph:Hypergraph):
     set_k(0.10, 0.08, 0.36, 0.18)
     res = minimize(objective_function, x, method='L-BFGS-B')
     points = get_points(res.x)
-    graph.points = points
+
+    # min = 99999
+    # x_buffer = res.x
     
     for i in range(30):
         improve_note = 0
 
-        draw = Drawer(graph, f"records/v-2-0/{i}.png",'Hypergraph Visualization', False)
+        draw = Drawer(graph, f"records/v-2-1/{i}.png",'Hypergraph Visualization', False)
         print("----------------------",i)
         
         set_k(0, 0, 0.36, 0.18)
         points, improve_note = swap_minimize(points)
-        graph.points = points
+        graph.points = points.copy()
 
         x = get_x(points)
-        set_k(0.30, 0.16, 0.36, 0.18)
+        set_k(0.10, 0.08, 0.36, 0.18)
         res = minimize(objective_function, x, method='L-BFGS-B')
         points = get_points(res.x)
+
+        # if(objective_function(res.x) < min):
+        #     min = objective_function(res.x)
+        #     x_buffer = res.x.copy()
 
         if improve_note == 0:
             break
 
+    # graph.points = get_points(x_buffer).copy()
+    # draw = Drawer(graph, f"records/v-2-1/opt.png",'Hypergraph Visualization', False)
 
     return points

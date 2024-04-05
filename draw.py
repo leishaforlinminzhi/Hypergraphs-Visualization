@@ -5,7 +5,7 @@ import numpy as np
 from hypergraph import Hypergraph
 
 class Drawer:
-    def __init__(self, graph: Hypergraph, dst: str, name:str):
+    def __init__(self, graph: Hypergraph, dst: str, name:str, show:bool):
         
         self.dir = dst
 
@@ -46,5 +46,6 @@ class Drawer:
 
         # 在这之前添加保存图形的代码
         plt.savefig(self.dir, dpi=300, bbox_inches='tight')
-
-        plt.show()
+        
+        # if(show):
+        #     plt.show()
