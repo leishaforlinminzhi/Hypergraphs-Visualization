@@ -268,44 +268,43 @@ def getres(graph:Hypergraph):
     record[0] = objective_function(x)
     time[0] = datetime.now().strftime("%H:%M:%S")
 
-
-    # set_k(0.10, 0.08, 0.36, 0.18)
     res = minimize(objective_function, x, method='L-BFGS-B')
     points = get_points(res.x)
-
+    buffer = objective_function(res.x)
     
-    for i in range(10):
+    for i in range(20):
         
         record[i+1] = objective_function(res.x)
         time[i+1] = datetime.now().strftime("%H:%M:%S")
 
-        improve_note = 0
-
         draw = Drawer(graph, f"records/v-3-0/{i}.png",'Hypergraph Visualization', False)
         print("----------------------",i)
         
-        # set_k(0, 0, 0.36, 0.18)
         points = swap_minimize(points)
         graph.points = points.copy()
 
         x = get_x(points)
-        # set_k(0.10, 0.08, 0.36, 0.18)
         res = minimize(objective_function, x, method='L-BFGS-B')
         points = get_points(res.x)
 
-        # if(objective_function(res.x) < min):
-        #     min = objective_function(res.x)
-        #     x_buffer = res.x.copy()
+        y = objective_function(res.x)
+        if(y < buffer - 0.00001):
+            buffer = y
+        else:
+            if(y < 0.005):
+                break
 
-        if improve_note == 0:
-            break
-
-    # graph.points = get_points(x_buffer).copy()
-    # draw = Drawer(graph, f"records/v-2-1/opt.png",'Hypergraph Visualization', False)
-    
     print()
     print(record)
     print(time)
     print()
+
+    filename = 'records/v-3-0/record.txt'
+    try:
+        with open(filename, 'w', encoding='utf-8') as file:
+            file.write(record)
+            file.write(time)
+    except Exception as e:
+        print("写入文件时出错:", str(e))
 
     return points
