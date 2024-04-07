@@ -17,6 +17,7 @@ k_PS = 0.36
 k_PI = 0.18
 
 def set_k(pr, pa, ps, pi):
+    """设置objective function系数"""
     global k_PR, k_PA, k_PS, k_PI
     k_PR = pr
     k_PA = pa
@@ -207,9 +208,7 @@ def objective_function(x):
     return k_PR * E_PR + k_PA * E_PA + k_PS * E_PS + k_PI * E_PI
 
 def swap_minimize(points):
-    x_buffer = get_x(points)
-    y_buffer = objective_function(x_buffer)
-    note = 0
+    y_buffer = 99999
     for e in Graph.edges:
         for i in range(len(e)):
             for j in range(i+1,len(e)):
@@ -217,16 +216,22 @@ def swap_minimize(points):
                 buffer = points_buffer[e[i]]
                 points_buffer[e[i]] = points_buffer[e[j]]
                 points_buffer[e[j]] = buffer
-                x = get_x(points_buffer)
-                y = objective_function(x)
-                if y < (y_buffer - 0.00001):
-                    print(e[i], e[j], y, y_buffer)
-                    note = 1
-                    points = points_buffer.copy()
-                    x_buffer = x
+                res = minimize(objective_function, get_x(points_buffer), method='L-BFGS-B')
+                y = objective_function(res.x)
+                if y < y_buffer:
+                    print(e[i], e[j], y)
                     y_buffer = y
+                    record = [e[i], e[j]]
 
-    return points,note
+    print("minimize swap:",record[0], record[1], y_buffer)
+    if y_buffer < objective_function(get_x(points)):
+        print("accepted swap:",record[0], record[1], y_buffer)
+        buffer = points[record[0]]
+        points[record[0]] = points[record[1]]
+        points[record[1]] = buffer
+        return points
+    print("not accepted swap:",record[0], record[1], y_buffer)
+    return points
 
 # gradient_function = grad(objective_function)
 
@@ -264,27 +269,27 @@ def getres(graph:Hypergraph):
     time[0] = datetime.now().strftime("%H:%M:%S")
 
 
-    set_k(0.10, 0.08, 0.36, 0.18)
+    # set_k(0.10, 0.08, 0.36, 0.18)
     res = minimize(objective_function, x, method='L-BFGS-B')
     points = get_points(res.x)
 
     
-    for i in range(30):
+    for i in range(10):
         
         record[i+1] = objective_function(res.x)
         time[i+1] = datetime.now().strftime("%H:%M:%S")
 
         improve_note = 0
 
-        draw = Drawer(graph, f"records/v-2-1/{i}.png",'Hypergraph Visualization', False)
+        draw = Drawer(graph, f"records/v-3-0/{i}.png",'Hypergraph Visualization', False)
         print("----------------------",i)
         
-        set_k(0, 0, 0.36, 0.18)
-        points, improve_note = swap_minimize(points)
+        # set_k(0, 0, 0.36, 0.18)
+        points = swap_minimize(points)
         graph.points = points.copy()
 
         x = get_x(points)
-        set_k(0.10, 0.08, 0.36, 0.18)
+        # set_k(0.10, 0.08, 0.36, 0.18)
         res = minimize(objective_function, x, method='L-BFGS-B')
         points = get_points(res.x)
 
