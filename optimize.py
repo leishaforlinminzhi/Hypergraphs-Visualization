@@ -3,6 +3,7 @@
 import numpy as np
 import math
 import random
+import json
 from autograd import grad
 from scipy.optimize import minimize
 from collections import OrderedDict
@@ -26,6 +27,8 @@ def set_k(pr, pa, ps, pi):
 
 
 Graph = Hypergraph([],[])
+subGraph = Hypergraph([],[])
+note = []
 
 class Optimizer:
     def __init__(self, graph:Hypergraph):
@@ -207,39 +210,126 @@ def objective_function(x):
     Graph.points = points
     return k_PR * E_PR + k_PA * E_PA + k_PS * E_PS + k_PI * E_PI
 
+def objective_function_sub(x):
+    """子图目标函数"""
+
+    E_PR = 0 
+    E_PA = 0
+    E_PS = 0
+    E_PI = 0
+
+    # x中保存的一维坐标赋值回坐标向量
+    points = {}
+    for i in range(len(x)//2):
+        points[subGraph.v[i]] = [x[i*2], x[i*2+1]]
+    
+    edges_points = {}
+    centroid_point = {}
+    # 将每条边对应的点通过质心极坐标排序
+    for i in range(len(subGraph.edges)):
+        edge = subGraph.edges[i]
+        edges_points[i] = {key: value for key, value in points.items() if key in edge}
+        edges_points[i],centroid_point[i] = centroid(edges_points[i])
+        subGraph.edges[i] = list(edges_points[i].keys())
+
+    for i in range(len(subGraph.edges)):
+        edge = subGraph.edges[i]
+        edge_points = edges_points[i]
+
+        # Polygon Regularity (PR) Energy
+        E_PR += get_PR(edge, edge_points)
+
+        # Polygon Area (PA) Energy
+        E_PA += get_PA(edge, edge_points)
+
+    for i in range(len(subGraph.edges)):
+        for j in range(i+1,len(subGraph.edges)):
+            if(len(subGraph.edges[i]) != 1 and len(subGraph.edges[j]) != 1):
+                # Polygon Separation (PS) Energy
+                E_PS += get_PS(edges_points[i],edges_points[j],centroid_point[i],centroid_point[j])
+                # Polygon Intersection (PI) Energy
+                E_PI += get_PI(subGraph.edges[i],subGraph.edges[j],edges_points[i],edges_points[j])
+            else:
+                # Polygon Separation (PS) Energy
+                # TODO：case for monogon
+                pass
+    subGraph.points = points
+    return k_PR * E_PR + k_PA * E_PA + k_PS * E_PS + k_PI * E_PI
+
+
+def get_subgraph(p1, p2):
+    graph = Hypergraph([],[])
+    graph.edges = []
+    graph.v = set()
+
+    for e in Graph.eofv[p1]:
+        if Graph.edges[e] not in graph.edges:
+            graph.edges.append(Graph.edges[e])
+            graph.v.update(Graph.edges[e])
+    for e in Graph.eofv[p2]:
+        if Graph.edges[e] not in graph.edges:
+            graph.edges.append(Graph.edges[e])
+            graph.v.update(Graph.edges[e])
+
+    vs = list(graph.v)
+
+    for v in vs:
+        for e in Graph.eofv[v]:
+            if Graph.edges[e] not in graph.edges:
+                graph.edges.append(Graph.edges[e])
+                graph.v.update(Graph.edges[e])
+
+    graph.v = list(graph.v)
+
+    graph.points = {key: value for key, value in Graph.points.items() if key in graph.v}
+
+    return graph
+
 def swap_minimize(points):
-    y_buffer = 99999
+    global note
+    minus_buffer = 0
+    record = []
     for e in Graph.edges:
         for i in range(len(e)):
             for j in range(i+1,len(e)):
-                points_buffer = points.copy()
-                buffer = points_buffer[e[i]]
-                points_buffer[e[i]] = points_buffer[e[j]]
-                points_buffer[e[j]] = buffer
-                res = minimize(objective_function, get_x(points_buffer), method='L-BFGS-B')
-                y = objective_function(res.x)
-                if y < y_buffer:
-                    print(e[i], e[j], y)
-                    y_buffer = y
+                # 剪枝
+                if(Graph.d[e[i]] == 1 and Graph.d[e[j]] == 1) or len(e) < 3 or note[e[i]][e[j]] == 1:
+                    continue
+                
+                # 取子图
+                global subGraph
+                subGraph = get_subgraph(e[i],e[j])
+                
+                y_buffer = objective_function_sub(get_x(subGraph.points))
+
+                # 剪枝 
+                if y_buffer < 0.001:
+                    continue
+                
+                buffer = subGraph.points[e[i]]
+                subGraph.points[e[i]] = subGraph.points[e[j]]
+                subGraph.points[e[j]] = buffer
+
+                res = minimize(objective_function_sub, get_x(subGraph.points), method='L-BFGS-B')
+
+                y = objective_function_sub(res.x)
+                if (y_buffer - y)/y_buffer > minus_buffer:
+                    print(e[i],e[j],y_buffer)
+                    minus_buffer = (y_buffer - y)/y_buffer
                     record = [e[i], e[j]]
+                    points_buffer = subGraph.points
 
-    print("minimize swap:",record[0], record[1], y_buffer)
-    if y_buffer < objective_function(get_x(points)):
-        print("accepted swap:",record[0], record[1], y_buffer)
-        buffer = points[record[0]]
-        points[record[0]] = points[record[1]]
-        points[record[1]] = buffer
+    print("minimize swap:",record[0], record[1])
+    if not minus_buffer == 0:
+        note[record[0]][record[1]] = 1
+        print("accepted swap:",record[0], record[1])
+        print(points)
+        print(points_buffer)
+        for p in points_buffer:
+            points[p] = points_buffer[p]
         return points
-    print("not accepted swap:",record[0], record[1], y_buffer)
+    print("not accepted swap:",record[0], record[1])
     return points
-
-# gradient_function = grad(objective_function)
-
-# evaluations = []
-# def callback_function(x):
-#     evaluations.append(objective_function(x))
-
-# res = minimize(objective_function, x, jac=gradient_function, method='L-BFGS-B', callback=callback_function)
 
 def get_x(points):
     x = []
@@ -257,14 +347,15 @@ def get_points(x):
 
 def getres(graph:Hypergraph):
     """获得优化结果:顶点坐标集合"""
-    global Graph 
+    global Graph, note
     Graph = graph
+    note = [[0 for j in range(max(Graph.v)+2)] for i in range(max(Graph.v)+2)]
 
     x = get_x(Graph.points)
 
     record = {}
     time = {}
-    set_k(0.10, 0.08, 0.36, 0.18)
+    set_k(0.08, 0.06, 0.36, 0.18)
     record[0] = objective_function(x)
     time[0] = datetime.now().strftime("%H:%M:%S")
 
@@ -276,6 +367,7 @@ def getres(graph:Hypergraph):
         
         record[i+1] = objective_function(res.x)
         time[i+1] = datetime.now().strftime("%H:%M:%S")
+
 
         draw = Drawer(graph, f"records/v-3-0/{i}.png",'Hypergraph Visualization', False)
         print("----------------------",i)
@@ -302,7 +394,9 @@ def getres(graph:Hypergraph):
     filename = 'records/v-3-0/record.txt'
     try:
         with open(filename, 'w', encoding='utf-8') as file:
-            file.write(record)
+            string = (str)(json.dumps(record))
+            file.write(string)
+            string = (str)(json.dumps(time))
             file.write(time)
     except Exception as e:
         print("写入文件时出错:", str(e))
