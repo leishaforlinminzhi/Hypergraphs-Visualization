@@ -11,6 +11,7 @@ from datetime import datetime
 
 from hypergraph import Hypergraph
 from draw import Drawer
+from SwapRecord import SwapRecord, Stack
 
 k_PR = 0.30
 k_PA = 0.16
@@ -28,7 +29,8 @@ def set_k(pr, pa, ps, pi):
 
 Graph = Hypergraph([],[])
 subGraph = Hypergraph([],[])
-note = []
+swapNote = []
+edgeNote = []
 
 class Optimizer:
     def __init__(self, graph:Hypergraph):
@@ -286,14 +288,17 @@ def get_subgraph(p1, p2):
     return graph
 
 def swap_minimize(points):
-    global note
-    minus_buffer = 0
-    record = []
-    for e in Graph.edges:
+    global swapNote
+    global edgeNote
+
+    swapStack = Stack()
+
+    for k in range(len(Graph.edges)):
+        e = Graph.edges[k]
         for i in range(len(e)):
             for j in range(i+1,len(e)):
                 # 剪枝
-                if(Graph.d[e[i]] == 1 and Graph.d[e[j]] == 1) or len(e) < 3 or note[e[i]][e[j]] == 1:
+                if(Graph.d[e[i]] == 1 and Graph.d[e[j]] == 1) or len(e) < 3 or swapNote[e[i]][e[j]] == 1:
                     continue
                 
                 # 取子图
@@ -313,23 +318,43 @@ def swap_minimize(points):
                 res = minimize(objective_function_sub, get_x(subGraph.points), method='L-BFGS-B')
 
                 y = objective_function_sub(res.x)
-                if (y_buffer - y) > minus_buffer:
-                    print(e[i],e[j],(y_buffer - y))
-                    minus_buffer = (y_buffer - y)
-                    record = [e[i], e[j]]
-                    points_buffer = subGraph.points
 
-    print("minimize swap:",record[0], record[1])
-    if not minus_buffer == 0:
-        note[record[0]][record[1]] = 1
-        note[record[1]][record[0]] = 1
-        print("accepted swap:",record[0], record[1])
-        print(points)
-        print(points_buffer)
-        for p in points_buffer:
-            points[p] = points_buffer[p]
-        return points
-    print("not accepted swap:",record[0], record[1])
+                print(Graph.edges[k], e[i], e[j], ((y_buffer - y) * edgeNote[k]))
+
+                record = SwapRecord()
+                record.pair = [e[i], e[j]]
+                record.edge = k
+                record.points = subGraph.points.copy()
+                record.energy = (y_buffer - y) * edgeNote[k]
+
+                if((y_buffer - y) * edgeNote[k]) > 0:
+                    swapStack.push(record)
+    
+    y_points = objective_function(get_x(points))
+    points_buffer = points.copy()
+
+    while not (swapStack.is_empty()):
+        points = points_buffer.copy()
+
+        record = swapStack.pop()
+
+        for p in record.points:
+            points[p] = record.points[p]
+
+        res = minimize(objective_function, get_x(points), method='L-BFGS-B')
+
+        print(record.pair, objective_function(res.x), y_points)
+        if(objective_function(res.x) < y_points):
+            swapNote[record.pair[0]][record.pair[1]] = 1
+            swapNote[record.pair[1]][record.pair[0]] = 1
+            # 边内有点对交换过的边优先级降低
+            edgeNote[record.edge] *= 0.8
+            print("accepted swap:",record.pair[0], record.pair[1])
+            return get_points(res.x)
+        else:
+            # 边内点对交换失败的边优先级降低
+            edgeNote[record.edge] *= 0.9
+    print("not accepted swap")
     return points
 
 def get_x(points):
@@ -348,9 +373,10 @@ def get_points(x):
 
 def getres(graph:Hypergraph):
     """获得优化结果:顶点坐标集合"""
-    global Graph, note
+    global Graph, swapNote, edgeNote
     Graph = graph
-    note = [[0 for j in range(max(Graph.v)+2)] for i in range(max(Graph.v)+2)]
+    swapNote = [[0 for j in range(max(Graph.v)+2)] for i in range(max(Graph.v)+2)]
+    edgeNote = [1 for i in range(len(Graph.edges)+2)]
 
     x = get_x(Graph.points)
 
@@ -370,7 +396,7 @@ def getres(graph:Hypergraph):
         time[i+1] = datetime.now().strftime("%H:%M:%S")
 
 
-        draw = Drawer(graph, f"records/v-4-0/{i}.png",'Hypergraph Visualization', False)
+        draw = Drawer(graph, f"records/v-4-1/{i}.png",'Hypergraph Visualization', False)
         print("----------------------",i)
         
         points = swap_minimize(points)
@@ -381,24 +407,20 @@ def getres(graph:Hypergraph):
         points = get_points(res.x)
 
         y = objective_function(res.x)
-        if(y < buffer - 0.00001):
-            buffer = y
-        else:
-            if(y < 0.005):
-                break
+        if(y < 0.01):
+            break
 
     print()
     print(record)
     print(time)
     print()
 
-    filename = 'records/v-4-0/record.txt'
+    filename = 'records/v-4-1/record.txt'
     try:
         with open(filename, 'w', encoding='utf-8') as file:
-            string = (str)(json.dumps(record))
-            file.write(string)
-            string = (str)(json.dumps(time))
-            file.write(time)
+            string1 = (str)(json.dumps(record))
+            string2 = (str)(json.dumps(time))
+            file.write(string1+string2)
     except Exception as e:
         print("写入文件时出错:", str(e))
 
