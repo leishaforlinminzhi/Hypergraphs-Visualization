@@ -313,15 +313,16 @@ def swap_minimize(points):
                 res = minimize(objective_function_sub, get_x(subGraph.points), method='L-BFGS-B')
 
                 y = objective_function_sub(res.x)
-                if (y_buffer - y)/y_buffer > minus_buffer:
-                    print(e[i],e[j],y_buffer)
-                    minus_buffer = (y_buffer - y)/y_buffer
+                if (y_buffer - y) > minus_buffer:
+                    print(e[i],e[j],(y_buffer - y))
+                    minus_buffer = (y_buffer - y)
                     record = [e[i], e[j]]
                     points_buffer = subGraph.points
 
     print("minimize swap:",record[0], record[1])
     if not minus_buffer == 0:
         note[record[0]][record[1]] = 1
+        note[record[1]][record[0]] = 1
         print("accepted swap:",record[0], record[1])
         print(points)
         print(points_buffer)
@@ -363,13 +364,13 @@ def getres(graph:Hypergraph):
     points = get_points(res.x)
     buffer = objective_function(res.x)
     
-    for i in range(20):
+    for i in range(50):
         
         record[i+1] = objective_function(res.x)
         time[i+1] = datetime.now().strftime("%H:%M:%S")
 
 
-        draw = Drawer(graph, f"records/v-3-0/{i}.png",'Hypergraph Visualization', False)
+        draw = Drawer(graph, f"records/v-4-0/{i}.png",'Hypergraph Visualization', False)
         print("----------------------",i)
         
         points = swap_minimize(points)
@@ -391,7 +392,7 @@ def getres(graph:Hypergraph):
     print(time)
     print()
 
-    filename = 'records/v-3-0/record.txt'
+    filename = 'records/v-4-0/record.txt'
     try:
         with open(filename, 'w', encoding='utf-8') as file:
             string = (str)(json.dumps(record))
