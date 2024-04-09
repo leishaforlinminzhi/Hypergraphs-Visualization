@@ -333,13 +333,20 @@ def swap_minimize(points):
     y_points = objective_function(get_x(points))
     points_buffer = points.copy()
 
+    swap_note = 0
     while not (swapStack.is_empty()):
+        if swap_note > 4:
+            break
         points = points_buffer.copy()
+        y_points = objective_function(get_x(points))
 
         record = swapStack.pop()
-
-        for p in record.points:
-            points[p] = record.points[p]
+        if swapNote[record.pair[0]][record.pair[1]] == 1:
+            continue
+        
+        p_buffer = points[record.pair[0]]
+        points[record.pair[0]] = points[record.pair[1]]
+        points[record.pair[1]] = p_buffer
 
         res = minimize(objective_function, get_x(points), method='L-BFGS-B')
 
@@ -350,10 +357,14 @@ def swap_minimize(points):
             # 边内有点对交换过的边优先级降低
             edgeNote[record.edge] *= 0.8
             print("accepted swap:",record.pair[0], record.pair[1])
-            return get_points(res.x)
+            swap_note += 1
+            points = get_points(res.x)
+            points_buffer = points.copy()
         else:
             # 边内点对交换失败的边优先级降低
             edgeNote[record.edge] *= 0.9
+    if(swap_note):
+        return get_points(res.x)
     print("not accepted swap")
     return points
 
@@ -396,7 +407,7 @@ def getres(graph:Hypergraph):
         time[i+1] = datetime.now().strftime("%H:%M:%S")
 
 
-        draw = Drawer(graph, f"records/v-4-1/{i}.png",'Hypergraph Visualization', False)
+        draw = Drawer(graph, f"records/v-4-2/{i}.png",'Hypergraph Visualization', False)
         print("----------------------",i)
         
         points = swap_minimize(points)
@@ -415,7 +426,7 @@ def getres(graph:Hypergraph):
     print(time)
     print()
 
-    filename = 'records/v-4-1/record.txt'
+    filename = 'records/v-4-2/record.txt'
     try:
         with open(filename, 'w', encoding='utf-8') as file:
             string1 = (str)(json.dumps(record))
